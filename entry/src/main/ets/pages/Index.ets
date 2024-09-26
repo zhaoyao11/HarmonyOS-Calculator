@@ -229,7 +229,7 @@ struct Index {
               cal: $cal,
               button_opacity_son: $button_opacity_32,
               result: $result,
-              num: 'x!',
+              num: '!',
               textSize: 24,
               buttonColor: 0xFF9F0B
             })
@@ -266,7 +266,7 @@ struct Index {
               cal: $cal,
               button_opacity_son: $button_opacity_33,
               result: $result,
-              num: '1/x',
+              num: '√',
               textSize: 20,
               buttonColor: 0xFF9F0B
             })
@@ -487,7 +487,15 @@ struct Index {
 //获得优先级等级的函数
 function getPrecedence(item:string):number{
   switch(item){
-    case '%':return 3
+    case 'lg':return 4
+    case '√' :return 3
+    case '!' :return 4
+    case 'ln':return 4
+    case 'sin':return 4
+    case 'cos':return 4
+    case 'tan':return 4
+    case '^':return 4
+    case '%':return 4
     case '×':return 2
     case '÷':return 2
     case '+':
@@ -505,18 +513,42 @@ export function SwitchMiddleToEnd(cal:string){
   let first_fu:boolean = true
   let switchStack = new CharacterStack();
   let i =0;
+  let currentcharacter:string = '';
+  let flaglog:boolean = false;
+  let flagtriangle:boolean = false;
   while(i<cal.length){
+    if(isCharacter(cal[i])){
+      currentcharacter = cal[i];
+      console.log('当前的符号为：'+currentcharacter);
+    }
+    else if(cal[i]=='l'){
+      currentcharacter = 'l'+cal[i+1];
+      console.log('当前的符号为：'+currentcharacter);
+      flaglog = true;
+    }
+    else if(isSingleCharacter1(cal[i])&&cal[i]!='l'){
+      currentcharacter = cal[i]+cal[i+1]+cal[i+2];
+      console.log('当前的符号为：'+currentcharacter);
+      flagtriangle = true;
+    }
+
+
     //如果遍历到数字直接入队
     if(isNumber(cal[i])){
       let numberstring = '';
-      while(isNumber(cal[i])){
-        numberstring+=cal[i];
-        i++
+      if(cal[i]=='π'){
+        queue.enqueue(String(Math.PI));
       }
-      queue.enqueue(numberstring);
-      console.log(`${numberstring}入队`);
-      i--
+      else {
+        while (isNumber(cal[i])) {
+          numberstring += cal[i];
+          i++
+        }
+        queue.enqueue(numberstring);
 
+        console.log(`${numberstring}入队`);
+        i--
+      }
     }
     //如果遇到第一个位置是左括号加-号
       else if(cal[0]=='('&&cal[1]=='-'&&first_fu){
@@ -533,6 +565,7 @@ export function SwitchMiddleToEnd(cal:string){
       console.log(`${numberstring}入队`);
       console.log(`此时遍历到了：${cal[i]}`)
     }
+
     else if(cal[0]=='-'&&isNumber(cal[1])&&first_fu){
       let numberstring = '-';
       first_fu = false;
@@ -546,9 +579,9 @@ export function SwitchMiddleToEnd(cal:string){
       i--;
     }
     //如果连按几次同一个操作符
-      else if(!isNumber(cal[i])&&!isNumber(cal[i+1])&&cal[i]==cal[i+1]){
+     /* else if(!isNumber(cal[i])&&!isNumber(cal[i+1])&&cal[i]==cal[i+1]){
         i++;
-    }
+    }*/
     //带括号的负数在中间的时候
       else if(cal[i]=='('&&cal[i+1]=='-'&&isNumber(cal[i+2])){
       let numberstring = '-';
@@ -564,24 +597,25 @@ export function SwitchMiddleToEnd(cal:string){
     //如果栈中为空或者遇到左括号直接入栈
     else if(switchStack.isEmpty()||cal[i]=='('){
       if(cal[i]=='(') console.log('遇到了左括号')
-      switchStack.push(cal[i]);
+      switchStack.push(currentcharacter);
     }
     //栈顶操作符优先级小于当前操作符优先级
-    else if(cal[i]!=')'&&getPrecedence(switchStack.peek())<getPrecedence(cal[i])){
-      switchStack.push(cal[i]);
+    else if(cal[i]!=')'&&getPrecedence(switchStack.peek())<getPrecedence(currentcharacter)){
+      switchStack.push(currentcharacter);
+      console.log("放入的操作符为:"+currentcharacter);
     }
     //栈顶操作符优先级大于当前操作符优先级
-    else if(cal[i]!=')'&&getPrecedence(switchStack.peek())>=getPrecedence(cal[i])){
+    else if(cal[i]!=')'&&getPrecedence(switchStack.peek())>=getPrecedence(currentcharacter)){
         //栈顶元素出栈并且加到队列中去
-        while(getPrecedence(cal[i])<=getPrecedence(switchStack.peek()))
+        while(getPrecedence(currentcharacter)<=getPrecedence(switchStack.peek()))
         {queue.enqueue(String(switchStack.pop()))
           if(switchStack.isEmpty()){break}
         }
-        switchStack.push(cal[i]);
+        switchStack.push(currentcharacter);
     }
     //如果遇到了右括号
-    else if(cal[i]==')') {
-     // console.log('遇到了右括号')
+    else if(currentcharacter==')') {
+      console.log('遇到了右括号')
       while (switchStack.peek() != '(') {
         let temp: string = String(switchStack.pop());
         queue.enqueue(temp);
@@ -590,28 +624,76 @@ export function SwitchMiddleToEnd(cal:string){
       switchStack.pop()
      // console.log('左括号出栈')
     }
-    i++;
+    if(flaglog){
+      i = i+2;
+      flaglog = false;
+    }
+    else if(flagtriangle){
+      i = i+3;
+      flagtriangle = false;
+    }
+    else {
+      i++;
+    }
+    console.log('现在的i为：'+i);
   }
   //最后将剩余的操作符全部放到队列中
   while(!switchStack.isEmpty()) {
     queue.enqueue(String(switchStack.pop()))
   }
+  queue.print_queue()
   return queue;
 }
+
+
 //后缀表达式计算函数
 export function calculate_achieve(que:queue_my):string{
     let numberstack = new NumberStack();
     let i =0;
     let sum=que.size()
     while(i<sum){
+      console.log('queue中的peek元素为：'+que.peek());
       //如果遇到数字直接入栈并删除该元素
-      if(!isCharacter(que.peek())){
+      if(!isCharacter(que.peek())&&!isSingleCharacter2(que.peek())){
         console.log(`${que.peek()}已经入栈`)
           numberstack.push(que.peek());
           que.dequeue()
           i++;
       }
-      //如果遇到了操作符
+
+      //如果遇到了单目运算符
+      else if(isSingleCharacter2(que.peek())){
+        console.log('遇到了单目运算符');
+        let num = numberstack.pop();
+        if(que.peek()=='cos'){
+          numberstack.push(String(Math.cos(Number(num))));
+        }
+        else if(que.peek()=='sin'){
+          numberstack.push(String(Math.sin(Number(num))));
+        }
+        else if(que.peek()=='tan'){
+          numberstack.push(String(Math.tan(Number(num))));
+        }
+        else if(que.peek()=='lg') {
+          numberstack.push(String(Math.log10(Number(num))));
+        }
+        else if(que.peek()=='ln') {
+          numberstack.push(String(Math.log(Number(num))));
+        }
+        else if(que.peek()=='!'){
+          numberstack.push(String(factorial1(Number(num))));
+        }
+        else if(que.peek()=='%'){
+          numberstack.push(String(Number(num)*0.01));
+        }
+        else if(que.peek()=='√'){
+          numberstack.push(String(Math.sqrt(Number(num))));
+        }
+        que.dequeue();
+        i++;
+      }
+
+      //如果遇到了双目操作符
       else{
         let num_up = numberstack.pop();
         let num_down = numberstack.pop();
@@ -623,6 +705,9 @@ export function calculate_achieve(que:queue_my):string{
           numberstack.push(String(Number(num_down)-Number(num_up)))
         //  console.log(`${String(Number(num_down)-Number(num_up))}入栈`)
 
+        }
+        else if(que.peek()=='^'){
+          numberstack.push(String(Math.pow(Number(num_down),Number(num_up))));
         }
         else if(que.peek()=='×'){
           if(num_up=='3'||num_up=='6'||num_up=='9') {
@@ -644,28 +729,47 @@ export function calculate_achieve(que:queue_my):string{
         i++;
       }
     }
-    return String(numberstack.pop());
+    return String(roundToDecimal(numberstack.pop()));
 }
 //判断这个字符是不是数字
 function isNumber(item:string):boolean{
   if(item=='0'||item=='1'||item=='2'||item=='3'||item=='4'||item=='5'||item=='6'||
-    item=='7'||item=='8'||item=='9'||item=='.'){
+    item=='7'||item=='8'||item=='9'||item=='.'||item=='π'){
     return true;
   }
   else return false;
 }
 //判断这个字符是不是操作符
 function isCharacter(item:string):boolean{
-  if(item=='+'||item=='-'||item=='÷'||item=='×'||item=='('||item==')'||item=='lg'||item=='ln'||item=='sin'||item=='cos'||item=='tan'||item=='!'||item=='^'){
+  if(item=='+'||item=='-'||item=='÷'||item=='×'||item=='('||item==')'||item=='^'||item=='!'||item=='%'||item=='√'){
     return true;
   }
   else return false;
 }
 
+//判断这个字符是不是单目运算符
+function isSingleCharacter1(item:string):boolean{
+  if(item=='c'||item=='s'||item=='t'||item=='lg'||item=='ln'){
+    return true;
+  }
+  else return false;
+}
+
+function isSingleCharacter2(item:string):boolean{
+  if(item=='cos'||item=='sin'||item=='tan'||item=='lg'||item=='ln'||item=='!'||item=='%'||item=='√'){
+    return true;
+  }
+  else return false;
+}
+
+
 //阶乘函数
 function factorial1(n:number):number{
-  if(n<=1){
+  if(n<=1&&n>=0){
     return 1;
+  }
+  else if(n<0){
+    return 0;
   }
   else{
     return n*factorial1(n-1);
@@ -673,8 +777,8 @@ function factorial1(n:number):number{
 }
 
 //保留两位小数的函数
-export function roundToDecimal(res:string){
+export function roundToDecimal(res?:string){
   let num =  Number(res);
-  const multiplier = Math.pow(10,2);
+  const multiplier = Math.pow(10,8);
   return Math.round(num*multiplier)/multiplier
 }

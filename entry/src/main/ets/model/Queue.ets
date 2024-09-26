@@ -31,7 +31,7 @@ export class queue_my{
   //打印队列中的元素
   print_queue(){
     for(let i =0;i<this.items.length;i++){
-      console.log(this.items[i]);
+      console.log('queue中的元素为：'+this.items[i]);
     }
   }
 
